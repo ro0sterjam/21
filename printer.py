@@ -1,3 +1,4 @@
+import pickle
 from hand import Hand
 from card import Card
 from enums import PlayerAction
@@ -75,3 +76,11 @@ def print_best_actions(avg_rewards):
 			best_action = max(avg_rewards[hand_header.hand][dealers_hands_header.hand], key=lambda action: avg_rewards[hand_header.hand][dealers_hands_header.hand][action])
 			print(display_map[best_action], end = '')
 		print('')
+
+def save_avg_rewards(avg_rewards):
+	with open('avg_rewards.pkl', 'wb') as f:
+		pickle.dump(avg_rewards, f, pickle.HIGHEST_PROTOCOL)
+
+def load_avg_rewards():
+  with open('avg_rewards.pkl', 'rb') as f:
+    return pickle.load(f)
