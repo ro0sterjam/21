@@ -2,8 +2,9 @@ from card import Card
 
 class Hand:
 
-	def __init__(self, cards = []):
+	def __init__(self, cards = [], wager=None):
 		self.cards = cards.copy()
+		self.wager = wager
 
 	def take(self, card):
 		self.cards.append(card)

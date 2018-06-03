@@ -63,7 +63,8 @@ dealers_hands_headers = [
 display_map = {
 	PlayerAction.STAY: '\x1b[0;37;41m' + ' S ' + '\x1b[0m',
 	PlayerAction.HIT: '\x1b[0;37;42m' + ' H ' + '\x1b[0m',
-	PlayerAction.DOUBLE: '\x1b[0;37;43m' + ' D ' + '\x1b[0m'
+	PlayerAction.DOUBLE: '\x1b[0;37;43m' + ' D ' + '\x1b[0m',
+	PlayerAction.SPLIT: '\x1b[0;37;44m' + ' P ' + '\x1b[0m'
 }
 
 def print_best_actions(avg_rewards):

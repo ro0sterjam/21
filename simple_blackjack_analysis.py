@@ -31,7 +31,6 @@ hands = [
 	Hand([Card.ACE, Card.FIVE]),
 	Hand([Card.THREE, Card.TWO]),
 	Hand([Card.ACE, Card.FOUR]),
-	Hand([Card.TWO, Card.TWO]),
 	Hand([Card.ACE, Card.THREE]),
 	Hand([Card.ACE, Card.TWO]),
 	Hand([Card.ACE, Card.ACE]),
@@ -42,7 +41,8 @@ hands = [
 	Hand([Card.SIX, Card.SIX]),
 	Hand([Card.FIVE, Card.FIVE]),
 	Hand([Card.FOUR, Card.FOUR]),
-	Hand([Card.THREE, Card.THREE])
+	Hand([Card.THREE, Card.THREE]),
+	Hand([Card.TWO, Card.TWO])
 ]
 
 dealers_hands = [
@@ -72,18 +72,24 @@ for hand in hands:
 		avg_rewards[hand][dealers_hand] = {
 			PlayerAction.HIT: 0.0,
 			PlayerAction.STAY: 0.0,
-			PlayerAction.DOUBLE: 0.0 if hand.is_starting_hand() else -999
+			PlayerAction.DOUBLE: 0.0 if hand.is_starting_hand() else -999,
+			PlayerAction.SPLIT: 0.0 if hand.is_pair() else -999
 		}
 		for i in range(10000):
-			hit_result = Blackjack(state=GameState.PLAYING, dealers_hand=Hand(dealers_hand.cards), hand=Hand(hand.cards), wager=1).act(PlayerAction.HIT)
-			reward = max(avg_rewards[hit_result.hand][dealers_hand].values()) if hit_result.state == GameState.PLAYING else hit_result.reward - 1
+			hit_result = Blackjack(state=GameState.PLAYING, dealers_hand=Hand(dealers_hand.cards), hands=[Hand(hand.cards, 1)], hand=0).act(PlayerAction.HIT)
+			reward = max(avg_rewards[hit_result.hands[hit_result.hand]][dealers_hand].values()) if hit_result.state == GameState.PLAYING else hit_result.reward - 1
 			avg_rewards[hand][dealers_hand][PlayerAction.HIT] = running_avg(avg_rewards[hand][dealers_hand][PlayerAction.HIT], i + 1, reward)
 
-			stay_result = Blackjack(state=GameState.PLAYING, dealers_hand=Hand(dealers_hand.cards), hand=Hand(hand.cards), wager=1).act(PlayerAction.STAY)
+			stay_result = Blackjack(state=GameState.PLAYING, dealers_hand=Hand(dealers_hand.cards), hands=[Hand(hand.cards, 1)], hand=0).act(PlayerAction.STAY)
 			avg_rewards[hand][dealers_hand][PlayerAction.STAY] = running_avg(avg_rewards[hand][dealers_hand][PlayerAction.STAY], i + 1, stay_result.reward - 1)
 
 			if hand.is_starting_hand():
-				double_result = Blackjack(state=GameState.PLAYING, dealers_hand=Hand(dealers_hand.cards), hand=Hand(hand.cards), wager=1).act(PlayerAction.DOUBLE, wager=1)
+				double_result = Blackjack(state=GameState.PLAYING, dealers_hand=Hand(dealers_hand.cards), hands=[Hand(hand.cards, 1)], hand=0).act(PlayerAction.DOUBLE, wager=1)
 				avg_rewards[hand][dealers_hand][PlayerAction.DOUBLE] = running_avg(avg_rewards[hand][dealers_hand][PlayerAction.DOUBLE], i + 1, double_result.reward - 2)
+
+			if hand.is_pair():
+				split_result = Blackjack(state=GameState.PLAYING, dealers_hand=Hand(dealers_hand.cards), hands=[Hand(hand.cards, 1)], hand=0).act(PlayerAction.SPLIT, wager=1)
+				reward = max(avg_rewards[split_result.hands[0]][dealers_hand].values()) + max(avg_rewards[split_result.hands[1]][dealers_hand].values())
+				avg_rewards[hand][dealers_hand][PlayerAction.SPLIT] = running_avg(avg_rewards[hand][dealers_hand][PlayerAction.SPLIT], i + 1, reward)
 
 print_best_actions(avg_rewards)

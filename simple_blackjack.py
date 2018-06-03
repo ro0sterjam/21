@@ -1,4 +1,5 @@
 from continuous_deck import Deck
+from hand import Hand
 from enums import GameState
 from enums import PlayerAction
 
@@ -13,20 +14,21 @@ This is an extremely stripped down, simple version of blackjack with the followi
 
 class ActionResult:
 
-	def __init__(self, state, hand, dealers_hand, reward=None):
+	def __init__(self, state, hands, hand, dealers_hand, reward=None):
 		self.state = state
+		self.hands = hands
 		self.hand = hand
 		self.dealers_hand = dealers_hand
 		self.reward = reward
 
 class Blackjack:
 
-	def __init__(self, deck=Deck(), state=GameState.FINISHED, dealers_hand=None, hand=None, wager=None):
+	def __init__(self, deck=Deck(), state=GameState.FINISHED, dealers_hand=None, hands=None, hand=None):
 		self.deck = deck
 		self.state = state
 		self.dealers_hand = dealers_hand
+		self.hands = hands
 		self.hand = hand
-		self.wager = wager
 
 	def act(self, action, wager=None):
 		if action == PlayerAction.BET:
@@ -34,42 +36,61 @@ class Blackjack:
 			if wager == None: raise ValueError('Wager must be provided when action is BET')
 			if wager <= 0: raise ValueError('Wager must be positive')
 			self.state = GameState.PLAYING
-			self.hand = Hand(self.deck.deal())
 			self.dealers_hand = Hand(self.deck.deal(), self.deck.deal())
-			self.wager = wager
-			return ActionResult(self.state, self.hand, self.dealers_hand)
+			self.hands = [Hand(self.deck.deal(), wager)]
+			self.hand = 0
+			return ActionResult(self.state, self.hands, 0, self.dealers_hand)
 
 		elif action == PlayerAction.STAY:
 			if self.state != GameState.PLAYING: raise ValueError('Cannot STAY when GameState is not PLAYING')
-			self.dealers_hand.take(self.deck.deal())
+			if self.hand + 1 < len(self.hands):
+				self.hand = self.hand + 1
+				return ActionResult(self.state, self.hands, self.hand, self.dealers_hand)
+			while self.dealers_hand.best_val() < 17 and not self.dealers_hand.busted():
+				self.dealers_hand.take(self.deck.deal())
 			if self.dealers_hand.busted():
 				self.state = GameState.FINISHED
-				return ActionResult(self.state, self.hand, self.dealers_hand, 2 * self.wager)
-			elif self.dealers_hand.best_val() >= 17:
-				self.state = GameState.FINISHED
-				reward = 0 if self.dealers_hand.best_val() > self.hand.best_val() else 2 * self.wager if self.hand.best_val() > self.dealers_hand.best_val() else self.wager
-				return ActionResult(self.state, self.hand, self.dealers_hand, reward)
+				return ActionResult(self.state, self.hands, self.hand, self.dealers_hand, sum(map(lambda hand: hand.wager * 2, self.hands)))
 			else:
-				return self.act(PlayerAction.STAY)
+				self.state = GameState.FINISHED
+				reward = sum(map(lambda hand: 0 if self.dealers_hand.best_val() > hand.best_val() else hand.wager * 2 if hand.best_val() > self.dealers_hand.best_val() else hand.wager, self.hands))
+				return ActionResult(self.state, self.hands, self.hand, self.dealers_hand, reward)
 
 		elif action == PlayerAction.HIT:
 			if self.state != GameState.PLAYING: raise ValueError('Cannot HIT when GameState is not PLAYING')
-			self.hand.take(self.deck.deal())
-			if self.hand.busted():
-				self.state = GameState.FINISHED
-				return ActionResult(self.state, self.hand, self.dealers_hand, 0)
+			self.hands[self.hand].take(self.deck.deal())
+			if self.hands[self.hand].busted():
+				if self.hand + 1 < len(self.hands):
+					self.hand = self.hand + 1
+					return ActionResult(self.state, self.hands, self.hand, self.dealers_hand)
+				else:
+					self.state = GameState.FINISHED
+					return ActionResult(self.state, self.hands, self.hand, self.dealers_hand, 0)
 			else:
-				return ActionResult(self.state, self.hand, self.dealers_hand)
+				return ActionResult(self.state, self.hands, self.hand, self.dealers_hand)
 
 		elif action == PlayerAction.DOUBLE:
 			if self.state != GameState.PLAYING: raise ValueError('Cannot DOUBLE when GameState is not PLAYING')
-			if not self.hand.is_starting_hand(): raise ValueError('Cannot DOUBLE when not starting hand ')
+			if not self.hands[self.hand].is_starting_hand(): raise ValueError('Cannot DOUBLE when not starting hand')
 			if wager == None: raise ValueError('Wager must be provided when action is DOUBLE')
-			if wager <= 0 or wager > self.wager: raise ValueError('Wager must be positive but less than original wager')
-			self.wager = self.wager + wager
-			self.hand.take(self.deck.deal())
-			if self.hand.busted():
-				self.state = GameState.FINISHED
-				return ActionResult(self.state, self.hand, self.dealers_hand, 0)
+			if wager <= 0 or wager > self.hands[self.hand].wager: raise ValueError('Wager must be positive but not greater than original wager')
+			self.hands[self.hand].wager = self.hands[self.hand].wager + wager
+			self.hands[self.hand].take(self.deck.deal())
+			if self.hands[self.hand].busted():
+				if self.hand + 1 < len(self.hands):
+					self.hand = self.hand + 1
+					return ActionResult(self.state, self.hands, self.hand, self.dealers_hand)
+				else:
+					self.state = GameState.FINISHED
+					return ActionResult(self.state, self.hands, self.hand, self.dealers_hand, 0)
 			else:
 				return self.act(PlayerAction.STAY)
+
+		elif action == PlayerAction.SPLIT:
+			if self.state != GameState.PLAYING: raise ValueError('Cannot SPLIT when GameState is not PLAYING')
+			if not self.hands[self.hand].is_pair(): raise ValueError('Cannot SPLIT when not a pair')
+			if wager == None: raise ValueError('Wager must be provided when action is DOUBLE')
+			if wager != self.hands[self.hand].wager: raise ValueError('Wager must be equal to original wager')
+			self.hands.append(Hand([self.hands[self.hand].cards.pop(), self.deck.deal()], wager))
+			self.hands[self.hand].take(self.deck.deal())
+			return ActionResult(self.state, self.hands, self.hand, self.dealers_hand)
