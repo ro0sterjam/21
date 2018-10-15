@@ -1,7 +1,7 @@
 import pickle
-from hand import Hand
-from card import Card
-from enums import PlayerAction
+from common.hand import Hand
+from common.card import Card
+from common.enums import PlayerAction
 
 class Header:
 

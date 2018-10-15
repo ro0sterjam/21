@@ -1,5 +1,5 @@
 import random
-from card import Card
+from common.card import Card
 
 '''
 Simple implementation of a Deck of infinite cards with constant unchanging equal distribution
