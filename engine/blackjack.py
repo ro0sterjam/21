@@ -1,3 +1,6 @@
+import sys
+sys.path.append("..")
+
 from common.continuous_deck import Deck
 from common.hand import Hand
 from common.enums import GameState, PlayerAction

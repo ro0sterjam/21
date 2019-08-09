@@ -1,4 +1,8 @@
+import sys
+sys.path.append("..")
+
 import pickle
+
 from common.hand import Hand
 from common.card import Card
 from common.enums import PlayerAction
